@@ -1,3 +1,5 @@
+**Current version:** v0.2.0
+
 # VR Stack Control
 
 A small, modular **Linux VR stack launcher + control panel** that manages your VR session using **systemd --user**.
