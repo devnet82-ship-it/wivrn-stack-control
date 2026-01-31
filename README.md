@@ -30,10 +30,8 @@ vr-control --gui
 Note: Tray integration was removed in v0.6.21. Closing the window exits normally.
 
 
-======================================================================
 WI VRN + WAYVR + SLIMEVR ON CACHYOS (QUEST 3)
 COMPLETE FIRST-TIME SETUP GUIDE
-======================================================================
 
 This is the exact process that was followed to get a fully working
 WiVRn + WayVR + SlimeVR setup on CachyOS using a Quest 3.
