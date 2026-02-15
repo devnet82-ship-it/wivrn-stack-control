@@ -1,14 +1,38 @@
-# VR Stack Control v0.6.85
+# VR Stack Control (v0.6.85)
 
-This release replaces your old `vr-control --gui` YAD UI with a GTK GUI.
+Linux GUI + systemd user service for running a modular VR stack:
 
-## Install
+**tracking → server → headset app → VR app**
+
+Built to keep OpenXR and OpenVR switching reliable (especially when SteamVR likes to stick).
+
+## Credits
+- David Coates — idea, testing, real-world setup notes
+- ChatGPT — implementation help + iteration
+
+## Why this exists
+VR on Linux can break when OpenXR and OpenVR state gets stuck:
+- SteamVR leaves an OpenXR override behind
+- OpenVR paths go missing or duplicate
+- switching between WiVRn and SteamVR does not snap back
+
+VR Stack Control makes switching predictable:
+- WiVRn mode clears the user OpenXR override
+- WiVRn mode closes Steam and SteamVR on switch
+- SteamVR mode sets the user OpenXR override to SteamVR
+- OpenVR paths are repaired and normalized when needed
+- One button start and stop with correct ordering
+
+---
+
+## Install VR Stack Control (Release zip)
+
+Download the v0.6.85 zip from GitHub Releases, then:
 
 ```bash
 cd ~/Downloads
-rm -rf vr-stack-control-v0.6.85
-unzip -o vr-stack-control-v0.6.85.zip
-cd vr-stack-control-v0.6.85
+unzip -o vr-stack-control-v0.6.85*.zip -d vr-stack-control-v0.6.85
+cd vr-stack-control-v0.6.85/*
 chmod +x install.sh uninstall.sh bin/*
 ./install.sh
 systemctl --user daemon-reload
@@ -20,148 +44,114 @@ systemctl --user daemon-reload
 vr-control --gui
 ```
 
-## What’s new
-
-- Tracking backend ON/OFF toggle (start stack with or without tracking software like SlimeVR)
-- `vr-control --gui` now opens the GTK GUI
-- Profiles page: create / rename / delete / edit profiles
-- Removed the old “Actions” tab (Start/Stop + settings cover most use-cases)
-- Apps & Settings page includes inline “why this matters” help text
-
-Tray integration is available again via an optional tray service:
-
+## Tray (optional)
 - Start tray once: `vr-control tray`
 - Autostart tray: `vr-control tray-enable`
 - Disable tray: `vr-control tray-disable`
 
-The backend service still runs headless; the tray is a separate GUI helper.
-
-## v0.6.68 change
-
-- XR Runtime names clarified:
-  - **WiVRn (Native / Quest streaming)**
-  - **SteamVR (Steam Link / Legacy)**
-- New toggle: **Auto-start SteamVR** (default OFF). When OFF, selecting SteamVR will set the runtime but won’t auto-launch SteamVR.
-
-### Steam per-game Launch Options helper (WiVRn)
-
-If a Steam title insists on using the wrong runtime, set its Launch Options to:
+## Doctor (sanity check)
 
 ```bash
-env PRESSURE_VESSEL_IMPORT_OPENXR_1_RUNTIMES=1 \
-  XR_RUNTIME_JSON="$HOME/.config/openxr/1/wivrn_runtime.json" \
-  OPENXR_RUNTIME_JSON="$HOME/.config/openxr/1/wivrn_runtime.json" \
-  %command%
+vr-control doctor
 ```
 
+---
 
-## Tracking backend toggle
+# Quest 3 on CachyOS
+## WiVRn (BETA) + SlimeVR (BETA) + WayVR using VR Stack Control
 
-You can enable/disable tracking independently of the rest of the stack.
+This is the setup that worked on CachyOS + Quest 3.
+Use beta or dev builds for WiVRn and SlimeVR for this stack.
 
-- ON: tracking starts first (before the server and VR app)
-- OFF: the stack starts without tracking
+Final stack order (managed by VR Stack Control):
+SlimeVR (beta) → WiVRn server → Quest WiVRn app → WayVR → game
 
-Config keys (in `~/.config/vr-stack/stack.conf`):
-
-```bash
-tracking_enabled='true'
-tracking_stop_when_disabled='true'
-```
-
-## Runner (new in v0.6.68)
-
-The systemd user service now runs a Python daemon (`~/.local/bin/vr-stackd`).
-This means the *app itself* manages the stack (start/stop/monitor) instead of
-calling a bash runner script.
-
-
-# WI VRN + WAYVR + SLIMEVR ON CACHYOS (QUEST 3)
-COMPLETE FIRST-TIME SETUP GUIDE
-
-This is the exact process that was followed to get a fully working
-WiVRn + WayVR + SlimeVR setup on CachyOS using a Quest 3.
-
-Nothing here is theoretical.
-Every command listed below was actually run.
-
-Follow every step in order.
-Do not skip steps.
-
-
-WHAT YOU END UP WITH
-
-- Quest 3 connects wirelessly to the PC
-- WayVR runs without OpenXR errors
-- SlimeVR body tracking works
-- No duplicate launches
-- Correct OpenXR runtime every time
-
-Final stack order:
-
-SlimeVR (SolarXR IPC)
-WiVRn OpenXR runtime
-WiVRn server
-Quest WiVRn APK
-WayVR
-
-
-REQUIREMENTS
-
+## Requirements
 - CachyOS (Wayland session)
-- Meta Quest 3
-- USB cable (one-time setup)
-- PC and Quest on the same Wi-Fi
-- Internet access
+- Meta Quest 3 (Developer Mode enabled)
+- USB cable for one time ADB setup
+- PC and headset on the same network
 
+---
 
-## PART 1 — INSTALL PC SOFTWARE
+## Part 1 — Install PC software (beta and dev builds)
 
-Run exactly:
+### 1) Install an AUR helper (if you do not have one)
+If `yay` is missing:
 
 ```bash
-yay -S wivrn-full-git
-sudo pacman -S wayvr slimevr android-tools github-cli
+sudo pacman -S --needed base-devel git
+git clone https://aur.archlinux.org/yay.git
+cd yay
+makepkg -si
 ```
 
-This installs:
-
-- WiVRn server (working AUR build)
-- WayVR compositor
-- SlimeVR server
-- ADB (for Quest)
-- GitHub CLI (for APK download)
-
-
-VERIFY COMMANDS EXIST (DO NOT SKIP)
+### 2) Remove stable packages (if installed)
 
 ```bash
-command -v wayvr
+sudo pacman -Rns wivrn-dashboard wivrn-server slimevr 2>/dev/null || true
+```
+
+### 3) Install WiVRn dev build + SlimeVR beta build
+
+```bash
+yay -S --needed wivrn-full-git slimevr-beta-bin
+```
+
+### 4) Install the rest
+
+```bash
+sudo pacman -S --needed wayvr android-tools github-cli
+```
+
+Verify:
+
+```bash
 command -v wivrn-server
+command -v wayvr
 command -v slimevr
 ```
 
-If any command is missing, stop and fix it before continuing.
+---
 
+## Part 2 — OpenVR compatibility for SteamVR games (XRizer)
 
-## PART 2 — QUEST DEVELOPER MODE + ADB
+WiVRn will warn if OpenVR compatibility is missing. Install XRizer:
 
-Enable developer mode (phone):
+```bash
+yay -S --needed xrizer-git xrizer-common-git lib32-xrizer-git
+```
 
-Meta Quest app
-Devices → Quest 3
-Developer Mode → ON
+Set VR_PATHREG_OVERRIDE in fish (universal):
 
+```fish
+set -Ux VR_PATHREG_OVERRIDE $HOME/.local/share/openvr/openvrpaths.vrpath
+```
+
+---
+
+## Part 3 — Set system OpenXR runtime to WiVRn (recommended)
+
+VR Stack Control clears the user override when you select WiVRn.
+To make WiVRn the default fallback, set the system runtime to WiVRn:
+
+```bash
+sudo mkdir -p /etc/openxr/1
+sudo ln -sf /usr/share/openxr/1/openxr_wivrn.json /etc/openxr/1/active_runtime.json
+```
+
+---
+
+## Part 4 — Quest Developer Mode + ADB
+
+Enable Developer Mode in the Meta Quest phone app:
+Devices → Quest 3 → Developer Mode → ON
 Reboot the headset.
 
+Enable USB Debugging in the headset:
+Settings → System → Developer → USB Debugging
 
-Enable USB debugging (headset):
-
-Settings → System → Developer
-Enable USB Debugging
-
-
-Connect Quest to PC:
+Connect and verify:
 
 ```bash
 adb kill-server
@@ -169,86 +159,71 @@ adb start-server
 adb devices
 ```
 
-Inside the headset:
-- Accept USB debugging
-- Tick Always allow
-
-Verify again:
+Accept the prompt in the headset and tick Always allow, then run again:
 
 ```bash
 adb devices
 ```
 
-Expected output:
+You must see: `XXXXXXXXXXXX    device`
 
-XXXXXXXXXXXX    device
+---
 
-If not, stop and fix before continuing.
+## Part 5 — Install the WiVRn Quest APK (beta) from GitHub Actions
 
-
-## PART 3 — DOWNLOAD AND INSTALL QUEST APK
-
-Login to GitHub CLI:
+List recent runs:
 
 ```bash
-gh auth login
-gh auth status
+gh run list --repo WiVRn/WiVRn --limit 10
 ```
 
-You must see:
-Logged in to github.com
-
-
-Download WiVRn Quest APK (GitHub Actions build)
-
-Example run ID used:
-21321590049
+Pick the newest successful run ID and download the APK artifact (usually named `apk-Release`):
 
 ```bash
-gh run download 21321590049 --repo WiVRn/WiVRn --name apk-Release
-```
-
-Extract:
-
-```bash
+gh run download RUN_ID_HERE --repo WiVRn/WiVRn --name apk-Release
 unzip -o *.zip
 ls *.apk
 ```
 
-You must see exactly one APK.
-
-
-Install APK to Quest:
-
-Inside headset:
-Settings → Apps → WiVRn → Uninstall
-Reboot headset
-
-Install:
+Install to Quest:
 
 ```bash
 adb install -r *.apk
-```
-
-Expected output:
-Success
-
-Verify:
-
-```bash
 adb shell pm list packages | grep -i wivrn
 ```
 
-Expected:
-package:org.wivrn.client
+If you use SlimeVR for body tracking, set WiVRn app body tracking to off to avoid conflicts.
 
+---
 
-REQUIRED QUEST SETTING (SLIMEVR USERS)
+## Part 6 — Run everything using VR Stack Control
 
-Inside Quest WiVRn app:
-- Disable Enable body tracking
-- Let SlimeVR / SolarXR provide tracking
+Open the GUI:
 
-- Start: `systemctl --user start vr-stack-control.service`
-- Stop:  `systemctl --user stop vr-stack-control.service`
-- Logs:  `journalctl --user -fu vr-stack-control.service`
+```bash
+vr-control --gui
+```
+
+In the GUI:
+- Select **WiVRn (Native / Quest streaming)**
+- Enable SlimeVR autostart in your profile if you want tracking every time
+- Start the stack
+
+Service commands (optional):
+
+```bash
+systemctl --user start vr-stack-control.service
+systemctl --user stop vr-stack-control.service
+journalctl --user -fu vr-stack-control.service
+```
+
+Quick sanity check:
+
+```bash
+vr-control doctor
+```
+
+Expected in WiVRn mode:
+- OpenXR runtime name: Monado
+- OpenXR library includes libopenxr_wivrn
+- SteamVR processes: not running
