@@ -75,6 +75,54 @@ vr-control doctor
 ```
 
 ---
+---
+
+# Quick tutorial (using the app)
+
+## What the buttons do (simple)
+- **XR Runtime dropdown**
+  - **WiVRn** = Quest streaming (should NOT start Steam/SteamVR)
+  - **SteamVR** = SteamVR/OpenVR path (for SteamVR/legacy)
+- **Start** = launches the stack in the correct order
+- **Stop** = stops everything cleanly
+- **Doctor** = prints a health report (OpenXR runtime + OpenVR paths + services)
+- **Tray** = optional small icon for quick Start/Stop/Doctor
+
+## First time (2 minutes)
+1) Open:
+   `vr-control --gui`
+2) Set **XR Runtime = WiVRn**
+3) (Optional) Enable **SlimeVR / Tracking** toggle if you want body tracking
+4) Click **Start**
+5) Put on the Quest -> open **WiVRn (Quest Store app)** -> connect to your PC
+6) When done, click **Stop**
+
+## Daily use flow
+- **Quest streaming / VRChat / WiVRn worlds**
+  1) XR Runtime = **WiVRn**
+  2) Click **Start**
+  3) Connect in the Quest WiVRn app
+  4) Click **Stop** when finished
+
+- **SteamVR mode (only if you specifically want SteamVR)**
+  1) XR Runtime = **SteamVR**
+  2) Click **Start**
+  3) Launch SteamVR/Steam game
+  4) Click **Stop** when finished
+
+## If something goes wrong
+1) Click **Stop**
+2) Run Doctor:
+   ```fish
+   vr-control doctor
+   ```
+3) What “good” looks like for WiVRn:
+   - OpenXR runtime shows **Monado/WiVRn** (not SteamVR)
+   - OpenVR paths are **present** (canonical not missing)
+4) If Steam opens when you select WiVRn:
+   - Click **Stop**
+   - Set XR Runtime back to **WiVRn**
+   - Start again (WiVRn mode should keep Steam/SteamVR closed)
 
 # 2) Install PC software (CachyOS / KDE / Wayland)
 
